@@ -9,7 +9,7 @@ def isSafeUsername(user):
     match = _ACCEPTABLE_USER_RE.match(user)
     return (match is not None)
 
-def readKeys(keydir):
+def readKeys(keydir, userprefix="", scanSubdirs=True, prependPath=False):
     """
     Read SSH public keys from ``keydir/*.pub`` and from its dubdirectories
     """
@@ -22,18 +22,24 @@ def readKeys(keydir):
             if ext != '.pub':
                 continue
 
-            if not isSafeUsername(basename):
-                log.warn('Unsafe SSH username in keyfile: %r', filename)
+            username = userprefix+basename
+            if not isSafeUsername(username):
+                log.warn('Unsafe SSH username in keyfile: %r', path)
                 continue
 
             f = file(path)
             for line in f:
                 line = line.rstrip('\n')
-                yield (basename, line)
+                yield (username, line)
             f.close()
-        elif os.path.isdir(path):
+        elif os.path.isdir(path) and scanSubdirs:
             # scan subdirectory
-            for v in readKeys(path):
+            newprefix = userprefix
+            # we use the path as a prefix, so a file called keydir/users/max.pub
+            # yields the username users-max
+            if prependPath:
+                newprefix = filename+"-"+userprefix
+            for v in readKeys(path, newprefix, scanSubdirs, prependPath):
                 yield v
 
 
@@ -66,7 +72,7 @@ def filterAuthorizedKeys(fp):
             continue
         yield line
 
-def writeAuthorizedKeys(path, keydir):
+def writeAuthorizedKeys(path, keydir, config):
     tmp = '%s.%d.tmp' % (path, os.getpid())
     try:
         in_ = file(path)
@@ -82,8 +88,12 @@ def writeAuthorizedKeys(path, keydir):
             if in_ is not None:
                 for line in filterAuthorizedKeys(in_):
                     print >>out, line
-
-            keygen = readKeys(keydir)
+            
+            # retrieve keys from subdirectories?
+            subdirs = config.getboolean("gitosis", "keysubdirs")
+            # prepend the sub-path to username?
+            prepend = config.getboolean("gitosis", "prependpath")
+            keygen = readKeys(keydir, userprefix="", scanSubdirs=subdirs, prependPath=prepend)
             for line in generateAuthorizedKeys(keygen):
                 print >>out, line
 

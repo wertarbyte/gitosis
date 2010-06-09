@@ -46,6 +46,7 @@ def post_update(cfg, git_dir):
     ssh.writeAuthorizedKeys(
         path=authorized_keys,
         keydir=os.path.join(export, 'keydir'),
+        config=cfg
         )
 
 class Main(app.App):

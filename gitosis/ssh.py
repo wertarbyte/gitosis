@@ -11,7 +11,7 @@ def isSafeUsername(user):
 
 def readKeys(keydir, userprefix="", scanSubdirs=True, prependPath=False):
     """
-    Read SSH public keys from ``keydir/*.pub`` and from its dubdirectories
+    Read SSH public keys from ``keydir/*.pub`` (and from its subdirectories)
     """
     for filename in os.listdir(keydir):
         if filename.startswith('.'):
